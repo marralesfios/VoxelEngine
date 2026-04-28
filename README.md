@@ -17,6 +17,7 @@ No you don't get to compile this
 - stb_image
 - ImGUI
 - C++17
+- Clang compiler (recommended, but not necessary)
 
 ## Compiling from Source
-Idk just write a CMake script or smth that compiles everything together
+Idk just write a CMake script or smth that compiles everything together, you are smart, I believe in you <3
