@@ -27,7 +27,22 @@
 
 /*
 TODO:
-- Get a proper UI system integrated instead of the current BS
+- Change various values to be data driven (external files) instead of comp-time constants
+	- Physics values (gravity, jump force, move speed, falling block gravity, etc) (`physics_constants.data`)
+	- Block Data (id, atlas, FaceTileMap, affectedByGravity) (`blocks.data`)
+	- Add <F3+H> for hot reloading values
+- Physics
+	- Add air resistance
+	- Add acceleration (up to a max value)
+	- Add velocity cap
+	- Add crouching <Ctrl> (hold, if uncrouched under 1.5 block ceiling, stay crouched until not under 1.5 block ceiling) (for going under 1.5 block tall ceilings)
+	- Add crawling <Shift+Ctrl> (toggle, if untoggled under 1 block ceiling, stay crawling until not under 1 block ceiling) (for going under 1 block tall ceilings)
+	- Add air resistance, acceleration, and max_velocity to `physics_constants.data` file instead of comp-time constants
+- Refactor UI to use Dear ImGUI
+	- Add velocity, acceleration, and crouch/crawl/stand state to debug overlay
+	- Reformat debug overlay to have block data span multiple lines instead of a single long line
+- Terrain Generation
+	- Saving maps to file
 */
 
 namespace {
