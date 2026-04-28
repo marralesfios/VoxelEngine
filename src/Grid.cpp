@@ -192,11 +192,11 @@ glm::ivec3 Grid::LocalPos(glm::ivec3 worldPos, glm::ivec3 chunkCoord) {
     return worldPos - chunkCoord * Chunk::kSize;
 }
 
-void Grid::ForEachBlock(const std::function<void(const glm::ivec3&, const FaceTileMap&)>& callback) const {
+void Grid::ForEachBlock(const std::function<void(const glm::ivec3&, uint32_t)>& callback) const {
     for (const auto& [coord, chunk] : chunks_) {
         const glm::ivec3 origin = coord * Chunk::kSize;
-        chunk->ForEachBlock([&](int lx, int ly, int lz, const FaceTileMap& tiles) {
-            callback(origin + glm::ivec3(lx, ly, lz), tiles);
+        chunk->ForEachBlock([&](int lx, int ly, int lz, uint32_t blockID) {
+            callback(origin + glm::ivec3(lx, ly, lz), blockID);
         });
     }
 }
@@ -221,7 +221,11 @@ void Grid::MarkNeighborChunksDirty(glm::ivec3 /*worldPos*/, glm::ivec3 chunkCoor
     (void)dirs;  
 }
 
-bool Grid::AddBlock(int x, int y, int z, const AtlasTexture& /*atlas*/, const FaceTileMap& faceTiles) {
+bool Grid::AddBlock(int x, int y, int z, uint32_t blockID) {
+    if (registry_ && !registry_->Get(blockID)) {
+        return false;
+    }
+
     const glm::ivec3 worldPos(x, y, z);
     if (HasBlockAt(worldPos)) return false;
 
@@ -232,7 +236,7 @@ bool Grid::AddBlock(int x, int y, int z, const AtlasTexture& /*atlas*/, const Fa
     if (it == chunks_.end()) {
         it = chunks_.emplace(cc, std::make_unique<Chunk>()).first;
     }
-    it->second->SetBlock(lp.x, lp.y, lp.z, faceTiles);
+    it->second->SetBlock(lp.x, lp.y, lp.z, blockID);
     MarkNeighborChunksDirty(worldPos, cc, lp);
     return true;
 }
@@ -285,6 +289,10 @@ Grid::LookedAtResult Grid::QueryLookedAt(const Camera& camera, float maxDistance
 
 void Grid::Draw(Shader& shader, const AtlasTexture& atlas,
                 const glm::mat4& projection, const glm::mat4& view) {
+    if (!registry_) {
+        return;
+    }
+
     shader.Use();
     shader.SetInt("uAtlas", 0);
     atlas.Bind(GL_TEXTURE0);
@@ -298,7 +306,7 @@ void Grid::Draw(Shader& shader, const AtlasTexture& atlas,
     for (auto& [coord, chunk] : chunks_) {
         if (chunk->IsDirty()) {
             const glm::ivec3 origin = coord * Chunk::kSize;
-            chunk->RebuildMesh(origin, atlas,
+            chunk->RebuildMesh(origin, atlas, *registry_,
                 [this](glm::ivec3 p) { return HasBlockAt(p); });
         }
         const glm::ivec3 origin = coord * Chunk::kSize;
@@ -314,7 +322,7 @@ Grid::LookedAtResult Grid::FindLookedAt(const glm::vec3& rayOrigin, const glm::v
     LookedAtResult nearest;
     float nearestDistance = maxDistance;
 
-    ForEachBlock([&](const glm::ivec3& blockPos, const FaceTileMap& tiles) {
+    ForEachBlock([&](const glm::ivec3& blockPos, uint32_t blockID) {
         const glm::vec3 center(blockPos);
         const glm::vec3 aabbMin = center - glm::vec3(0.5f);
         const glm::vec3 aabbMax = center + glm::vec3(0.5f);
@@ -325,7 +333,8 @@ Grid::LookedAtResult Grid::FindLookedAt(const glm::vec3& rayOrigin, const glm::v
         nearestDistance = hitDistance;
         nearest.hit = true;
         nearest.blockPos = blockPos;
-        nearest.faceTiles = tiles;
+        nearest.blockID = blockID;
+        nearest.blockData = registry_ ? registry_->Get(blockID) : nullptr;
 
         const glm::vec3 hitPoint = rayOrigin + rayDirection * hitDistance;
         const glm::vec3 local = hitPoint - center;

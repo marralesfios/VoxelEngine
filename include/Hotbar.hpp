@@ -1,11 +1,12 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <string>
 
 #include <SDL3/SDL_opengl.h>
 
-#include "AtlasTexture.hpp"
+#include "BlockRegistry.hpp"
 #include "CubeMesh.hpp"
 #include "Shader.hpp"
 
@@ -21,7 +22,7 @@ public:
 
     bool Initialize(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
 
-    void SetSlot(int slot, const FaceTileMap& tiles);
+    void SetSlot(int slot, uint32_t blockID);
     void ClearSlot(int slot);
     bool SlotHasBlock(int slot) const;
 
@@ -30,14 +31,14 @@ public:
     void SelectPrev();
     int SelectedSlot() const { return selectedSlot_; }
 
-    const FaceTileMap& CurrentTiles() const;
+    uint32_t CurrentBlockID() const;
 
-    void Draw(const AtlasTexture& atlas, int viewportW, int viewportH) const;
+    void Draw(const BlockRegistry& registry, int viewportW, int viewportH) const;
 
 private:
     struct Slot {
         bool hasBlock = false;
-        FaceTileMap tiles{};
+        uint32_t blockID = 0;
     };
 
     bool LoadGLFunctions();

@@ -8,6 +8,7 @@
 #include <SDL3/SDL_opengl.h>
 
 #include "AtlasTexture.hpp"
+#include "BlockRegistry.hpp"
 #include "CubeMesh.hpp"
 
 // A fixed 16×16×16 region of blocks that share a single combined GPU mesh.
@@ -22,23 +23,22 @@ public:
     Chunk& operator=(const Chunk&) = delete;
 
     bool HasBlock(int lx, int ly, int lz) const;
-    void SetBlock(int lx, int ly, int lz, const FaceTileMap& tiles);
+    void SetBlock(int lx, int ly, int lz, uint32_t blockID);
     bool RemoveBlock(int lx, int ly, int lz);
-    const FaceTileMap* GetTiles(int lx, int ly, int lz) const;
 
     void MarkDirty() { dirty_ = true; }
     bool IsDirty() const { return dirty_; }
 
     // Rebuilds the combined vertex mesh.  hasBlockAtWorld is queried for neighbour
     // lookups that cross chunk boundaries.  chunkOrigin is this chunk's world origin.
-    bool RebuildMesh(glm::ivec3 chunkOrigin, const AtlasTexture& atlas,
+    bool RebuildMesh(glm::ivec3 chunkOrigin, const AtlasTexture& atlas, const BlockRegistry& registry,
                      const std::function<bool(glm::ivec3)>& hasBlockAtWorld);
 
     void Draw() const;
     void DrawWireframe() const;
 
-    // Iterate every set block: callback(localX, localY, localZ, tiles)
-    void ForEachBlock(const std::function<void(int, int, int, const FaceTileMap&)>& callback) const;
+    // Iterate every set block: callback(localX, localY, localZ, blockID)
+    void ForEachBlock(const std::function<void(int, int, int, uint32_t)>& callback) const;
 
     bool IsEmpty() const { return blockCount_ == 0; }
     int BlockCount() const { return blockCount_; }
@@ -47,13 +47,14 @@ private:
     bool EnsureGPUResources();
     static bool LoadGLFunctions();
 
-    struct BlockData {
+    struct CellData {
         bool exists = false;
-        FaceTileMap tiles{};
+        uint32_t blockID = 0;
     };
 
-    BlockData blocks_[kSize][kSize][kSize]{};
+    CellData blocks_[kSize][kSize][kSize]{};
     int blockCount_ = 0;
+    // whether or not a chunk needs to be validated
     bool dirty_ = false;
 
     GLuint vao_ = 0;

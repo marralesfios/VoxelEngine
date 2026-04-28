@@ -102,12 +102,12 @@ bool Chunk::HasBlock(int lx, int ly, int lz) const {
     return blocks_[lx][ly][lz].exists;
 }
 
-void Chunk::SetBlock(int lx, int ly, int lz, const FaceTileMap& tiles) {
+void Chunk::SetBlock(int lx, int ly, int lz, uint32_t blockID) {
     if (!blocks_[lx][ly][lz].exists) {
         ++blockCount_;
     }
-    blocks_[lx][ly][lz].exists = true;
-    blocks_[lx][ly][lz].tiles  = tiles;
+    blocks_[lx][ly][lz].exists  = true;
+    blocks_[lx][ly][lz].blockID = blockID;
     dirty_ = true;
 }
 
@@ -119,22 +119,17 @@ bool Chunk::RemoveBlock(int lx, int ly, int lz) {
     return true;
 }
 
-const FaceTileMap* Chunk::GetTiles(int lx, int ly, int lz) const {
-    if (!blocks_[lx][ly][lz].exists) return nullptr;
-    return &blocks_[lx][ly][lz].tiles;
-}
-
-void Chunk::ForEachBlock(const std::function<void(int, int, int, const FaceTileMap&)>& callback) const {
+void Chunk::ForEachBlock(const std::function<void(int, int, int, uint32_t)>& callback) const {
     for (int lx = 0; lx < kSize; ++lx)
     for (int ly = 0; ly < kSize; ++ly)
     for (int lz = 0; lz < kSize; ++lz) {
         if (blocks_[lx][ly][lz].exists) {
-            callback(lx, ly, lz, blocks_[lx][ly][lz].tiles);
+            callback(lx, ly, lz, blocks_[lx][ly][lz].blockID);
         }
     }
 }
 
-bool Chunk::RebuildMesh(glm::ivec3 chunkOrigin, const AtlasTexture& atlas,
+bool Chunk::RebuildMesh(glm::ivec3 chunkOrigin, const AtlasTexture& atlas, const BlockRegistry& registry,
                          const std::function<bool(glm::ivec3)>& hasBlockAtWorld) {
     std::vector<float>    vertices;
     std::vector<uint32_t> indices;
@@ -184,7 +179,11 @@ bool Chunk::RebuildMesh(glm::ivec3 chunkOrigin, const AtlasTexture& atlas,
 
                 if (neighborSolid) { mask[u][v] = {}; continue; }
 
-                const FaceTile& tile = blocks_[lp.x][lp.y][lp.z].tiles[f];
+                const uint32_t blockID = blocks_[lp.x][lp.y][lp.z].blockID;
+                const BlockData* blockData = registry.Get(blockID);
+                if (!blockData) { mask[u][v] = {}; continue; }
+
+                const FaceTile& tile = blockData->faceTiles.at(f);
                 mask[u][v] = {true, tile.x, tile.y};
             }}
 

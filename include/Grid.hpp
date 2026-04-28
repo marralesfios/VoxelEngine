@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 
 #include "AtlasTexture.hpp"
+#include "BlockRegistry.hpp"
 #include "Camera.hpp"
 #include "Chunk.hpp"
 #include "CubeMesh.hpp"
@@ -15,14 +16,16 @@
 // A sparse voxel grid backed by 16×16×16 chunks, each sharing one combined GPU mesh.
 class Grid {
 public:
-    Grid() = default;
+    explicit Grid(const BlockRegistry* registry = nullptr) : registry_(registry) {}
 
     Grid(const Grid&) = delete;
     Grid& operator=(const Grid&) = delete;
 
-    // Add a block at integer grid coordinates (x, y, z) with per-face atlas tile configuration.
+    // Add a block at integer grid coordinates (x, y, z) using a registered block ID.
     // Returns false if a block already exists there.
-    bool AddBlock(int x, int y, int z, const AtlasTexture& atlas, const FaceTileMap& faceTiles);
+    bool AddBlock(int x, int y, int z, uint32_t blockID);
+
+    void SetRegistry(const BlockRegistry* registry) { registry_ = registry; }
 
     // Remove the block at the given grid position. Returns false if no block exists there.
     bool RemoveBlock(glm::ivec3 pos);
@@ -44,9 +47,10 @@ public:
     struct LookedAtResult {
         bool hit = false;
         glm::ivec3 blockPos{};
+        uint32_t blockID = 0;
+        const BlockData* blockData = nullptr;
         // Face index: 0=+X, 1=-X, 2=+Y, 3=-Y, 4=+Z, 5=-Z
         int faceIndex = -1;
-        FaceTileMap faceTiles{};
     };
 
     // Cast a ray from the camera and return info about the first block hit within maxDistance.
@@ -75,11 +79,12 @@ private:
     static glm::ivec3 ChunkCoord(glm::ivec3 worldPos);
     static glm::ivec3 LocalPos(glm::ivec3 worldPos, glm::ivec3 chunkCoord);
 
-    void ForEachBlock(const std::function<void(const glm::ivec3&, const FaceTileMap&)>& callback) const;
+    void ForEachBlock(const std::function<void(const glm::ivec3&, uint32_t)>& callback) const;
     void MarkNeighborChunksDirty(glm::ivec3 worldPos, glm::ivec3 chunkCoord, glm::ivec3 localPos);
 
     LookedAtResult FindLookedAt(const glm::vec3& rayOrigin, const glm::vec3& rayDirection,
                                  float maxDistance) const;
 
+    const BlockRegistry* registry_ = nullptr;
     std::unordered_map<glm::ivec3, std::unique_ptr<Chunk>, IVec3Hash> chunks_;
 };

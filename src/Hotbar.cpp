@@ -91,10 +91,10 @@ bool Hotbar::Initialize(const std::string& vertexShaderPath,
     return true;
 }
 
-void Hotbar::SetSlot(int slot, const FaceTileMap& tiles) {
+void Hotbar::SetSlot(int slot, uint32_t blockID) {
     if (slot < 0 || slot >= kSlotCount) return;
     slots_[slot].hasBlock = true;
-    slots_[slot].tiles    = tiles;
+    slots_[slot].blockID  = blockID;
 }
 
 void Hotbar::ClearSlot(int slot) {
@@ -121,11 +121,14 @@ void Hotbar::SelectPrev() {
     selectedSlot_ = (selectedSlot_ + kSlotCount - 1) % kSlotCount;
 }
 
-const FaceTileMap& Hotbar::CurrentTiles() const {
-    return slots_[selectedSlot_].tiles;
+uint32_t Hotbar::CurrentBlockID() const {
+    if (!slots_[selectedSlot_].hasBlock) {
+        return 0;
+    }
+    return slots_[selectedSlot_].blockID;
 }
 
-void Hotbar::Draw(const AtlasTexture& atlas, int viewportW, int viewportH) const {
+void Hotbar::Draw(const BlockRegistry& registry, int viewportW, int viewportH) const {
     if (vao_ == 0) return;
 
     constexpr float kSlotSize   = 50.0f;
@@ -185,15 +188,19 @@ void Hotbar::Draw(const AtlasTexture& atlas, int viewportW, int viewportH) const
         glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(verts.size() / 4));
     }
 
-    atlas.Bind(GL_TEXTURE0);
     shader_.SetVec4("uColor", 1.0f, 1.0f, 1.0f, 1.0f);
     shader_.SetInt("uUseTexture", 1);
 
     for (int i = 0; i < kSlotCount; ++i) {
         if (!slots_[i].hasBlock) continue;
 
-        const FaceTile& topTile = slots_[i].tiles[static_cast<int>(CubeFace::Top)];
-        const std::array<float, 8> uv = atlas.TileUV32(topTile.x, topTile.y);
+        const BlockData* blockData = registry.Get(slots_[i].blockID);
+        if (!blockData || !blockData->atlas) continue;
+
+        blockData->atlas->Bind(GL_TEXTURE0);
+
+        const FaceTile& topTile = blockData->faceTiles[static_cast<int>(CubeFace::Top)];
+        const std::array<float, 8> uv = blockData->atlas->TileUV32(topTile.x, topTile.y);
 
         const float ix = barX + i * (kSlotSize + kSlotPad) + kIconInset;
         const float iy = barY + kIconInset;
