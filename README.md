@@ -9,3 +9,14 @@ Totally didn't copy the greedy meshing code from some random research paper I fo
 Eventually I will replace the UI draw calls with texture draw calls\
 Not today tho\
 No you don't get to compile this
+
+## Dependencies
+- OpenGL
+- SDL3 (both the runtime and the dev kit)
+- GLM 1.0.3
+- stb_image
+- ImGUI
+- C++17
+
+## Compiling from Source
+Idk just write a CMake script or smth that compiles everything together
