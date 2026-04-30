@@ -1,5 +1,8 @@
 # Voxel Engine
 
+[![Latest Build](https://img.shields.io/github/v/release/Nadelio/VoxelEngine?include_prereleases&label=download&color=blue)](https://github.com/Nadelio/VoxelEngine/releases/tag/latest-build)
+[![Build Status](https://github.com/Nadelio/VoxelEngine/actions/workflows/main.yml/badge.svg)](https://github.com/Nadelio/VoxelEngine/actions/workflows/main.yml)
+
 Fuck it, we ball\
 Wanted to make Minecraft, wanted to write C, wanted to use OpenGL, decided C++ was more convenient\
 This is very spaghetti\
@@ -32,3 +35,10 @@ cmake --build build -j
 cd build
 ./VoxelEngine
 ```
+
+## Downloading Pre-built Binaries
+Pre-built binaries for Windows and Linux are available at [Releases](https://github.com/Nadelio/VoxelEngine/releases/tag/latest-build).\
+Steps:
+- Download `.zip` for your platform
+- Extract said `.zip`
+- The executable in the root of the extracted folder is the engine, enjoy <3
