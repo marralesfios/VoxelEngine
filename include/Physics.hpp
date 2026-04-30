@@ -7,6 +7,7 @@
 
 #include "BlockRegistry.hpp"
 #include "Grid.hpp"
+#include "PhysicsConstants.hpp"
 
 class Camera;
 
@@ -16,6 +17,8 @@ public:
         glm::vec3 min{};
         glm::vec3 max{};
     };
+
+    enum class PostureState { STANDING, CROUCHING, CRAWLING };
 
     struct Entity {
         glm::vec3 position{0.0f};
@@ -27,10 +30,22 @@ public:
 
         bool onGround = false;
 
+        PostureState posture   = PostureState::STANDING;
+        bool         crawlActive = false; // user has toggled crawling on
+
         void teleportTo(const glm::vec3& newPosition) {
             position = newPosition;
             velocity = glm::vec3(0.0f);
             onGround = false;
+        }
+
+        const char* getPosture() {
+            switch(posture) {
+                case PostureState::STANDING: return "STANDING";
+                case PostureState::CROUCHING: return "CROUCHED";
+                case PostureState::CRAWLING: return "CRAWLING";
+                default: return "UNKNOWN";
+            }
         }
     };
 
@@ -47,8 +62,12 @@ public:
                          float deltaSeconds,
                          const glm::vec3& desiredHorizontalVelocity,
                          bool jumpRequested,
-                         float gravityAcceleration,
-                         float jumpSpeed);
+                         bool crouchHeld,
+                         bool crawlToggleThisFrame,
+                         const PhysicsConstants& constants);
+
+    void SetConstants(const PhysicsConstants& constants) { constants_ = constants; }
+    const PhysicsConstants& GetConstants() const { return constants_; }
 
     void StepBlockGravity(float deltaSeconds);
 
@@ -70,12 +89,14 @@ private:
     AABB EntityAABB(const Entity& entity) const;
     bool IntersectsWorld(const AABB& aabb) const;
     bool MoveEntityAxis(Entity& entity, int axis, float delta) const;
+    bool CanFitPosture(const Entity& entity, float newHeight, float newEyeFromFeet) const;
 
     Grid& grid_;
     const BlockRegistry& registry_;
 
     float blockGravityAccumulator_ = 0.0f;
     std::vector<FallingBlock> fallingBlocks_;
+    PhysicsConstants constants_;
 
     static constexpr float kAxisStep = 0.05f;
     static constexpr float kGroundProbe = 0.03f;

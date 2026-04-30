@@ -21,28 +21,19 @@
 #include "Grid.hpp"
 #include "Camera.hpp"
 #include "Physics.hpp"
+#include "PhysicsConstants.hpp"
 #include "Shader.hpp"
 #include "DebugOverlay.hpp"
 #include "Hotbar.hpp"
 
 /*
 TODO:
-- Change various values to be data driven (external files) instead of comp-time constants
-	- Physics values (gravity, jump force, move speed, falling block gravity, etc) (`physics_constants.data`)
-	- Block Data (id, atlas, FaceTileMap, affectedByGravity) (`blocks.data`)
-	- Add <F3+H> for hot reloading values
-- Physics
-	- Add air resistance
-	- Add acceleration (up to a max value)
-	- Add velocity cap
-	- Add crouching <Ctrl> (hold, if uncrouched under 1.5 block ceiling, stay crouched until not under 1.5 block ceiling) (for going under 1.5 block tall ceilings)
-	- Add crawling <Shift+Ctrl> (toggle, if untoggled under 1 block ceiling, stay crawling until not under 1 block ceiling) (for going under 1 block tall ceilings)
-	- Add air resistance, acceleration, and max_velocity to `physics_constants.data` file instead of comp-time constants
 - Refactor UI to use Dear ImGUI
-	- Add velocity, acceleration, and crouch/crawl/stand state to debug overlay
 	- Reformat debug overlay to have block data span multiple lines instead of a single long line
 - Terrain Generation
 	- Saving maps to file
+- Rendering
+	- [BUG] Greedy meshing doesn't run every frame/tick
 */
 
 namespace {
@@ -75,6 +66,45 @@ namespace {
 		}
 
 		return relativePath;
+	}
+
+	// Parses blocks.data and registers each block into 'registry'.
+	// Returns false if the file cannot be opened or a registration fails.
+	bool LoadBlocks(const std::string& path, const AtlasTexture* atlas, BlockRegistry& registry) {
+		std::ifstream file(path);
+		if(!file.is_open()) {
+			return false;
+		}
+
+		std::string line;
+		while(std::getline(file, line)) {
+			if(line.empty() || line[0] == '#') { continue; }
+			std::istringstream iss(line);
+			std::string keyword;
+			if(!(iss >> keyword) || keyword != "block") { continue; }
+
+			uint32_t id = 0;
+			std::string name;
+			std::string gravStr;
+			if(!(iss >> id >> name >> gravStr)) { continue; }
+
+			const bool affectedByGravity = (gravStr == "true");
+
+			FaceTileMap ftm{};
+			bool valid = true;
+			for(int i = 0; i < 6; ++i) {
+				int fx = 0, fy = 0;
+				if(!(iss >> fx >> fy)) { valid = false; break; }
+				ftm[i] = FaceTile{fx, fy};
+			}
+			if(!valid) { continue; }
+
+			if(!registry.Register({id, name, ftm, atlas, affectedByGravity})) {
+				std::fprintf(stderr, "Block registration failed for ID %u (%s).\n", id, name.c_str());
+				return false;
+			}
+		}
+		return true;
 	}
 }
 
@@ -132,6 +162,8 @@ int main() {
 	const std::string hotbarFragShaderPath = ResolveAssetPath("assets/shaders/hotbar.frag");
 	const std::string atlasPngPath = ResolveAssetPath("assets/atlas.png");
 	const std::string atlasBmpPath = ResolveAssetPath("assets/atlas.bmp"); // NOT CURRENTLY USED
+	const std::string physicsConstantsPath = ResolveAssetPath("assets/data/physics_constants.data");
+	const std::string blocksDataPath = ResolveAssetPath("assets/data/blocks.data");
 
 	// init default shader
 	Shader defaultShader;
@@ -193,53 +225,20 @@ int main() {
 		return 1;
 	}
 
-	// create all the FaceTileMaps
-	const FaceTileMap grassBlock = {{
-		FaceTile{1, 0},  // front
-		FaceTile{1, 0},  // back
-		FaceTile{1, 0},  // left
-		FaceTile{1, 0},  // right
-		FaceTile{0, 0},  // top
-		FaceTile{2, 0},  // bottom
-	}};
+	// load physics constants (use defaults if file not present)
+	PhysicsConstants physicsConstants;
+	if(!LoadPhysicsConstants(physicsConstantsPath, physicsConstants)) {
+		std::fprintf(stderr, "Warning: could not load '%s', using defaults.\n", physicsConstantsPath.c_str());
+	}
 
-	const FaceTileMap dirtBlock = {{ // only use the grass bottom texture
-		FaceTile{2,0}, // front
-		FaceTile{2,0}, // back
-		FaceTile{2,0}, // left
-		FaceTile{2,0}, // right
-		FaceTile{2,0}, // top
-		FaceTile{2,0}  // bottom
-	}};
+	// block IDs (must match blocks.data)
+	enum BLOCKS { GRASS = 0, DIRT = 1, STONE = 2, SAND = 3 };
 
-	const FaceTileMap stoneBlock = {{ // only one stone texture
-		FaceTile{0,1}, // front
-		FaceTile{0,1}, // back
-		FaceTile{0,1}, // left
-		FaceTile{0,1}, // right
-		FaceTile{0,1}, // top
-		FaceTile{0,1}  // bottom
-	}};
-
-	const FaceTileMap sandBlock = {{ // only one sand texture
-		FaceTile{1,1}, // front
-		FaceTile{1,1}, // back
-		FaceTile{1,1}, // left
-		FaceTile{1,1}, // right
-		FaceTile{1,1}, // top
-		FaceTile{1,1}  // bottom
-	}};
-
-	// block IDs
-	enum BLOCKS { GRASS, DIRT, STONE, SAND };
-
-	// init block registry and register blocks
+	// init block registry from blocks.data
 	BlockRegistry blockRegistry;
-	if(!blockRegistry.Register({GRASS, "GRASS", grassBlock, &atlas, false}) ||
-	   !blockRegistry.Register({DIRT, "DIRT", dirtBlock, &atlas, false}) ||
-	   !blockRegistry.Register({STONE, "STONE", stoneBlock, &atlas, false}) ||
-	   !blockRegistry.Register({SAND, "SAND", sandBlock, &atlas, true})) {
-		std::fprintf(stderr, "Block registration failed. Ensure block IDs are unique and atlas is valid.\n");
+	if(!LoadBlocks(blocksDataPath, &atlas, blockRegistry)) {
+		std::fprintf(stderr, "Tried blocks.data at: %s\n", blocksDataPath.c_str());
+		std::fprintf(stderr, "Block data load failed.\n");
 		SDL_GL_DestroyContext(glContext);
 		SDL_DestroyWindow(window);
 		SDL_Quit();
@@ -307,18 +306,16 @@ int main() {
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CCW);
 
-	// initialize player
+	// initialize player (dimensions from physics constants)
 	Physics::Entity player;
-	player.radius = 0.30f;
-	player.height = 1.5f;
-	player.eyeFromFeet = 1.35f;
-	constexpr float kMoveSpeed = 4.5f;
-	constexpr float kGravity = 21.0f;
-	constexpr float kJumpSpeed = 7.0f;
+	player.radius      = 0.30f;
+	player.height      = physicsConstants.standHeight;
+	player.eyeFromFeet = physicsConstants.standEyeFromFeet;
 	
 	// runtime variables
 	Camera camera;
 	Physics physics(grid, blockRegistry);
+	physics.SetConstants(physicsConstants);
 	bool running = true;
 	bool debug_view = true;
 	bool debug_wireframe = false;
@@ -326,6 +323,10 @@ int main() {
 	bool debug_looked_at_face = true;
 	bool debug_looked_at_data = true;
 	bool debug_wireframe_only = false;
+	bool debug_stance = true;
+	bool debug_velocity = true;
+	bool crawlToggleThisFrame = false;
+	bool prevCrawlComboDown = false;
 	Uint64 previousCounter = SDL_GetPerformanceCounter();
 	double fpsAccumulatedSeconds = 0.0;
 	int fpsFrameCount = 0;
@@ -339,6 +340,7 @@ int main() {
 	while(running) {
 		float mouseDeltaX = 0.0f;
 		float mouseDeltaY = 0.0f;
+		crawlToggleThisFrame = false;
 
 		// calculate fps
 		const Uint64 counter = SDL_GetPerformanceCounter();
@@ -404,6 +406,27 @@ int main() {
 					if(event.key.key == SDLK_F) { debug_looked_at_face = !debug_looked_at_face; }
 					if(event.key.key == SDLK_D) { debug_looked_at_data = !debug_looked_at_data; }
 					if(event.key.key == SDLK_T) { debug_wireframe_only = !debug_wireframe_only; }
+					if(event.key.key == SDLK_S) { debug_stance = !debug_stance; }
+					if(event.key.key == SDLK_V) { debug_velocity = !debug_velocity; }
+					if(event.key.key == SDLK_H) {
+						// Hot-reload physics constants
+						PhysicsConstants reloaded;
+						if(LoadPhysicsConstants(physicsConstantsPath, reloaded)) {
+							physicsConstants = reloaded;
+							physics.SetConstants(physicsConstants);
+							std::fprintf(stderr, "Hot-reloaded physics_constants.data\n");
+						} else {
+							std::fprintf(stderr, "Warning: hot-reload failed for '%s'\n", physicsConstantsPath.c_str());
+						}
+						// Hot-reload blocks
+						blockRegistry.Clear();
+						if(LoadBlocks(blocksDataPath, &atlas, blockRegistry)) {
+							grid.RebuildVisibility();
+							std::fprintf(stderr, "Hot-reloaded blocks.data\n");
+						} else {
+							std::fprintf(stderr, "Warning: hot-reload failed for '%s'\n", blocksDataPath.c_str());
+						}
+					}
 				} else {
 					if(event.key.key >= SDLK_1 && event.key.key <= SDLK_9) {
 						hotbar.SelectSlot(static_cast<int>(event.key.key - SDLK_1));
@@ -423,6 +446,11 @@ int main() {
 		camera.UpdateFromMouseDelta(mouseDeltaX, mouseDeltaY);
 
 		const bool* keys = SDL_GetKeyboardState(nullptr);
+		const bool ctrlDown = keys[SDL_SCANCODE_LCTRL] || keys[SDL_SCANCODE_RCTRL];
+		const bool shiftDown = keys[SDL_SCANCODE_LSHIFT] || keys[SDL_SCANCODE_RSHIFT];
+		const bool crawlComboDown = ctrlDown && shiftDown;
+		crawlToggleThisFrame = crawlComboDown && !prevCrawlComboDown;
+		prevCrawlComboDown = crawlComboDown;
 
 		glm::vec3 forward = camera.Forward();
 		forward.y = 0.0f;
@@ -442,15 +470,18 @@ int main() {
 		if(glm::length(moveDir) > 0.0001f) {
 			moveDir = glm::normalize(moveDir);
 		}
-		const glm::vec3 desiredHorizontalVelocity = moveDir * kMoveSpeed;
+		const glm::vec3 desiredHorizontalVelocity = moveDir * physicsConstants.moveSpeed;
+
+		const bool crouchHeld = ctrlDown;
 
 		physics.StepEntityEuler(
 			player,
 			static_cast<float>(dt),
 			desiredHorizontalVelocity,
 			keys[SDL_SCANCODE_SPACE],
-			kGravity,
-			kJumpSpeed
+			crouchHeld,
+			crawlToggleThisFrame,
+			physicsConstants
 		);
 		physics.StepBlockGravity(static_cast<float>(dt));
 		physics.UpdateFallingBlocks(static_cast<float>(dt));
@@ -511,6 +542,20 @@ int main() {
 					oss << "NO BLOCK SEEN";
 				}
 				debugOverlay.DrawText(oss.str(), 16.0f, 44.0f, 4.0f, width, height);
+			}
+
+			if(debug_stance) {
+				std::ostringstream oss;
+				oss << "CURRENT STANCE: " << player.getPosture();
+				debugOverlay.DrawText(oss.str(), 16.0f, 72.0f, 4.0f, width, height);
+			}
+
+			if(debug_velocity) {
+				std::ostringstream oss;
+				oss << "VELOCITY: " << player.velocity.x 
+					<< " " <<  player.velocity.y 
+					<< " " << player.velocity.z;
+				debugOverlay.DrawText(oss.str(), 16.0f, 100.0f, 4.0, width, height);
 			}
 		}
 

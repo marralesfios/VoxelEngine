@@ -71,22 +71,123 @@ bool Physics::MoveEntityAxis(Entity& entity, int axis, float delta) const {
     return collided;
 }
 
+bool Physics::CanFitPosture(const Entity& entity, float newHeight, float newEyeFromFeet) const {
+    Entity test = entity;
+    const float feetY = entity.position.y - entity.eyeFromFeet;
+    test.height = newHeight;
+    test.eyeFromFeet = newEyeFromFeet;
+    test.position.y = feetY + newEyeFromFeet;
+    return !IntersectsWorld(EntityAABB(test));
+}
+
 void Physics::StepEntityEuler(Entity& entity,
                               float deltaSeconds,
                               const glm::vec3& desiredHorizontalVelocity,
                               bool jumpRequested,
-                              float gravityAcceleration,
-                              float jumpSpeed) {
-    entity.velocity.x = desiredHorizontalVelocity.x;
-    entity.velocity.z = desiredHorizontalVelocity.z;
+                              bool crouchHeld,
+                              bool crawlToggleThisFrame,
+                              const PhysicsConstants& constants) {
+    // Handle crawl toggle
+    if (crawlToggleThisFrame) {
+        entity.crawlActive = !entity.crawlActive;
+    }
 
-    if (entity.onGround && jumpRequested) {
-        entity.velocity.y = jumpSpeed;
-        entity.onGround = false;
-    } else if (entity.onGround) {
-        entity.velocity.y = -gravityAcceleration * deltaSeconds;
+    // Determine desired posture (crawl takes priority over crouch over stand)
+    PostureState desiredPosture = PostureState::STANDING;
+    if (entity.crawlActive) {
+        desiredPosture = PostureState::CRAWLING;
+    } else if (crouchHeld) {
+        desiredPosture = PostureState::CROUCHING;
+    }
+
+    auto ApplyPosture = [&](PostureState posture, float newHeight, float newEyeFromFeet) {
+        const float feetY = entity.position.y - entity.eyeFromFeet;
+        entity.posture = posture;
+        entity.height = newHeight;
+        entity.eyeFromFeet = newEyeFromFeet;
+        entity.position.y = feetY + newEyeFromFeet;
+    };
+
+    // Attempt posture transition
+    if (desiredPosture != entity.posture) {
+        float newH   = constants.standHeight;
+        float newEye = constants.standEyeFromFeet;
+        if (desiredPosture == PostureState::CROUCHING) {
+            newH   = constants.crouchHeight;
+            newEye = constants.crouchEyeFromFeet;
+        } else if (desiredPosture == PostureState::CRAWLING) {
+            newH   = constants.crawlHeight;
+            newEye = constants.crawlEyeFromFeet;
+        }
+
+        // Only ceiling-check when transitioning to a taller posture
+        const bool goingTaller = (newH > entity.height);
+        if (!goingTaller || CanFitPosture(entity, newH, newEye)) {
+            ApplyPosture(desiredPosture, newH, newEye);
+        } else if (desiredPosture == PostureState::STANDING &&
+                   entity.posture == PostureState::CRAWLING) {
+            // Can't stand; try crouching as an intermediate step
+            if (CanFitPosture(entity, constants.crouchHeight, constants.crouchEyeFromFeet)) {
+                ApplyPosture(PostureState::CROUCHING,
+                             constants.crouchHeight,
+                             constants.crouchEyeFromFeet);
+            }
+            // else: stay crawling (ceiling prevents even crouching)
+        }
+        // All other blocked transitions: stay in current posture until ceiling clears
+    }
+
+    // Posture-based speed adjustment (slowdowns are subtractive from move speed).
+    float slowdown = 0.0f;
+    if (entity.posture == PostureState::CROUCHING) {
+        slowdown = std::max(0.0f, constants.crouchSlowdown);
+    } else if (entity.posture == PostureState::CRAWLING) {
+        slowdown = std::max(0.0f, constants.proneSlowdown);
+    }
+
+    glm::vec2 desired2D(desiredHorizontalVelocity.x, desiredHorizontalVelocity.z);
+    const float desiredSpeed = glm::length(desired2D);
+    if (desiredSpeed > 0.0001f) {
+        const float adjustedSpeed = std::max(0.0f, desiredSpeed - slowdown);
+        desired2D = glm::normalize(desired2D) * adjustedSpeed;
+    }
+    glm::vec2 current2D(entity.velocity.x, entity.velocity.z);
+
+    if (glm::length(desired2D) > 0.0001f) {
+        // Accelerate toward desired velocity
+        const glm::vec2 diff    = desired2D - current2D;
+        const float     diffLen = glm::length(diff);
+        const float     step    = constants.acceleration * deltaSeconds;
+        current2D += (step >= diffLen) ? diff : (glm::normalize(diff) * step);
     } else {
-        entity.velocity.y -= gravityAcceleration * deltaSeconds;
+        // No input — apply friction on ground, air resistance in air
+        const float speed = glm::length(current2D);
+        const float dragRate = entity.onGround ? constants.groundFriction : constants.airResistance;
+        const float drag  = dragRate * deltaSeconds;
+        if (speed <= drag) {
+            current2D = glm::vec2(0.0f);
+        } else {
+            current2D -= glm::normalize(current2D) * drag;
+        }
+    }
+
+    // Clamp to velocity cap
+    const float hSpeed = glm::length(current2D);
+    if (hSpeed > constants.maxVelocity) {
+        current2D *= (constants.maxVelocity / hSpeed);
+    }
+
+    entity.velocity.x = current2D.x;
+    entity.velocity.z = current2D.y;
+
+    // Vertical: gravity and jump
+    if (entity.onGround && jumpRequested) {
+        entity.velocity.y = constants.jumpSpeed;
+        entity.onGround   = false;
+    } else if (entity.onGround) {
+        entity.velocity.y = -constants.gravity * deltaSeconds;
+    } else {
+        entity.velocity.y -= constants.gravity * deltaSeconds;
     }
 
     MoveEntityAxis(entity, 0, entity.velocity.x * deltaSeconds);
@@ -99,9 +200,9 @@ void Physics::StepEntityEuler(Entity& entity,
         }
         entity.velocity.y = 0.0f;
     } else {
-        Entity probe = entity;
+        Entity probe     = entity;
         probe.position.y -= kGroundProbe;
-        entity.onGround = IntersectsWorld(EntityAABB(probe));
+        entity.onGround  = IntersectsWorld(EntityAABB(probe));
     }
 }
 
@@ -146,7 +247,7 @@ void Physics::StepBlockGravity(float deltaSeconds) {
 }
 
 void Physics::UpdateFallingBlocks(float deltaSeconds) {
-    constexpr float kFallSpeed = 5.0f;
+    const float kFallSpeed = constants_.fallingBlockFallSpeed;
 
     for (int i = static_cast<int>(fallingBlocks_.size()) - 1; i >= 0; --i) {
         FallingBlock& fb = fallingBlocks_[i];

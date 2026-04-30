@@ -24,6 +24,8 @@ public:
         return blocks_.emplace(block.blockID, block).second;
     }
 
+    void Clear() { blocks_.clear(); }
+
     const BlockData* Get(uint32_t blockID) const {
         const auto it = blocks_.find(blockID);
         if (it == blocks_.end()) {
