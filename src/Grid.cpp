@@ -129,8 +129,6 @@ namespace {
         if (gFallVao != 0) return true;
         if (!LoadWireframeGLFunctions()) return false;
 
-        // 6 faces * 4 verts = 24 verts, 7 floats each (pos3, uv2, tileOrigin2).
-        // VBO is DYNAMIC_DRAW; updated each draw call with per-block tile UVs.
         constexpr std::array<uint32_t, 36> kIdx = {
              0,  1,  2,   2,  3,  0,
              4,  5,  6,   6,  7,  4,

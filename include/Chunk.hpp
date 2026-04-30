@@ -54,7 +54,7 @@ private:
 
     CellData blocks_[kSize][kSize][kSize]{};
     int blockCount_ = 0;
-    // whether or not a chunk needs to be validated
+    // Whether or not a chunk needs to be validated
     bool dirty_ = false;
 
     GLuint vao_ = 0;

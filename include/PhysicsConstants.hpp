@@ -18,7 +18,6 @@ struct PhysicsConstants {
     float maxVelocity           =  6.0f;
     float fallingBlockFallSpeed =  5.0f;
 
-    // Posture dimensions
     float standHeight       = 1.50f;
     float standEyeFromFeet  = 1.35f;
     float crouchHeight      = 1.25f;
