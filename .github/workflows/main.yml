@@ -119,3 +119,44 @@ jobs:
             build/standalone/Release/**
             build/standalone/**
           if-no-files-found: error
+
+  release:
+    name: update latest release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: zip artifacts
+        run: |
+          cd artifacts
+          for dir in */; do
+            zip -r "../${dir%/}.zip" "$dir"
+          done
+          cd ..
+
+      - name: create/update rolling release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-build
+          name: "Latest Build"
+          prerelease: true
+          make_latest: false
+          body: |
+            Automated build from the latest commit on `master`.
+
+            | Platform | Download |
+            |----------|----------|
+            | Windows  | `voxelengine-Windows.zip` |
+            | Linux    | `voxelengine-Linux.zip` |
+
+            Each zip contains the standalone executable, the `assets/` folder, and (on Windows) the SDL3 runtime DLL.
+          files: |
+            voxelengine-Windows.zip
+            voxelengine-Linux.zip
