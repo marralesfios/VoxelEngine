@@ -5,33 +5,31 @@
 #include <vector>
 
 namespace {
+    PFNGLCREATESHADERPROC pglCreateShader = nullptr;
+    PFNGLSHADERSOURCEPROC pglShaderSource = nullptr;
+    PFNGLCOMPILESHADERPROC pglCompileShader = nullptr;
+    PFNGLGETSHADERIVPROC pglGetShaderiv = nullptr;
+    PFNGLGETSHADERINFOLOGPROC pglGetShaderInfoLog = nullptr;
+    PFNGLCREATEPROGRAMPROC pglCreateProgram = nullptr;
+    PFNGLATTACHSHADERPROC pglAttachShader = nullptr;
+    PFNGLLINKPROGRAMPROC pglLinkProgram = nullptr;
+    PFNGLGETPROGRAMIVPROC pglGetProgramiv = nullptr;
+    PFNGLGETPROGRAMINFOLOGPROC pglGetProgramInfoLog = nullptr;
+    PFNGLUSEPROGRAMPROC pglUseProgram = nullptr;
+    PFNGLDELETESHADERPROC pglDeleteShader = nullptr;
+    PFNGLDELETEPROGRAMPROC pglDeleteProgram = nullptr;
+    PFNGLGETUNIFORMLOCATIONPROC pglGetUniformLocation = nullptr;
+    PFNGLUNIFORMMATRIX4FVPROC pglUniformMatrix4fv = nullptr;
+    PFNGLUNIFORM1IPROC pglUniform1i = nullptr;
+    PFNGLUNIFORM4FPROC pglUniform4f = nullptr;
+    PFNGLUNIFORM2FPROC pglUniform2f = nullptr;
 
-PFNGLCREATESHADERPROC pglCreateShader = nullptr;
-PFNGLSHADERSOURCEPROC pglShaderSource = nullptr;
-PFNGLCOMPILESHADERPROC pglCompileShader = nullptr;
-PFNGLGETSHADERIVPROC pglGetShaderiv = nullptr;
-PFNGLGETSHADERINFOLOGPROC pglGetShaderInfoLog = nullptr;
-PFNGLCREATEPROGRAMPROC pglCreateProgram = nullptr;
-PFNGLATTACHSHADERPROC pglAttachShader = nullptr;
-PFNGLLINKPROGRAMPROC pglLinkProgram = nullptr;
-PFNGLGETPROGRAMIVPROC pglGetProgramiv = nullptr;
-PFNGLGETPROGRAMINFOLOGPROC pglGetProgramInfoLog = nullptr;
-PFNGLUSEPROGRAMPROC pglUseProgram = nullptr;
-PFNGLDELETESHADERPROC pglDeleteShader = nullptr;
-PFNGLDELETEPROGRAMPROC pglDeleteProgram = nullptr;
-PFNGLGETUNIFORMLOCATIONPROC pglGetUniformLocation = nullptr;
-PFNGLUNIFORMMATRIX4FVPROC pglUniformMatrix4fv = nullptr;
-PFNGLUNIFORM1IPROC pglUniform1i = nullptr;
-PFNGLUNIFORM4FPROC pglUniform4f = nullptr;
-PFNGLUNIFORM2FPROC pglUniform2f = nullptr;
+    bool gLoaded = false;
 
-bool gLoaded = false;
-
-void* GLProc(const char* name) {
-    return SDL_GL_GetProcAddress(name);
+    void* GLProc(const char* name) {
+        return SDL_GL_GetProcAddress(name);
+    }
 }
-
-}  // namespace
 
 Shader::~Shader() {
     if (program_ != 0 && pglDeleteProgram) {

@@ -7,8 +7,12 @@ Likely not the most efficient either\
 DEFINITELY not unique\
 Totally didn't copy the greedy meshing code from some random research paper I found\
 Eventually I will replace the UI draw calls with texture draw calls\
-Not today tho\
-No you don't get to compile this
+Not today tho
+
+## AI Usage Disclaimer
+I did use Copilot for the `CMakeLists.txt` and `main.yml` files (mainly because IDK the first thing about either).\
+Copilot didn't touch the rest of my code, I did ask it questions on how to do XYZ, but it never generated code for me.\
+***All code is written by me, someone who has never written C++ before and is generally not the best programmer ever, if there are security or memory issues, it is because of my dumbass. Please create an issue. Thanks <3***
 
 ## Dependencies
 - OpenGL
@@ -20,4 +24,11 @@ No you don't get to compile this
 - Clang compiler (recommended, but not necessary)
 
 ## Compiling from Source
-Idk just write a CMake script or smth that compiles everything together, you are smart, I believe in you <3
+In the project's root folder:
+```bash
+mkdir build
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+cd build
+./VoxelEngine
+```

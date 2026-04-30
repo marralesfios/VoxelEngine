@@ -14,7 +14,7 @@
 #include "CubeMesh.hpp"
 #include "Shader.hpp"
 
-// A sparse voxel grid backed by 16×16×16 chunks, each sharing one combined GPU mesh.
+// A voxel grid backed by 16×16×16 chunks, each sharing one combined GPU mesh.
 class Grid {
 public:
     explicit Grid(const BlockRegistry* registry = nullptr) : registry_(registry) {}

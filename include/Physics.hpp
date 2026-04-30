@@ -31,7 +31,7 @@ public:
         bool onGround = false;
 
         PostureState posture   = PostureState::STANDING;
-        bool         crawlActive = false; // user has toggled crawling on
+        bool crawlActive = false;
 
         void teleportTo(const glm::vec3& newPosition) {
             position = newPosition;
