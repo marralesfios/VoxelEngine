@@ -4,6 +4,7 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
+#include <concepts>
 
 #include <glm/glm.hpp>
 
@@ -97,7 +98,15 @@ private:
     static glm::ivec3 ChunkCoord(glm::ivec3 worldPos);
     static glm::ivec3 LocalPos(glm::ivec3 worldPos, glm::ivec3 chunkCoord);
 
-    void ForEachBlock(const std::function<void(const glm::ivec3&, uint32_t)>& callback) const;
+    template<std::invocable<const glm::ivec3&,uint32_t> Ft>
+    void ForEachBlock(const Ft& callback) const{
+        for (const auto& [coord, chunk] : chunks_) {
+            const glm::ivec3 origin = coord * Chunk::kSize;
+            chunk->ForEachBlock([&](int lx, int ly, int lz, uint32_t blockID) {
+                callback(origin + glm::ivec3(lx, ly, lz), blockID);
+            });
+        }
+    }
     void MarkNeighborChunksDirty(glm::ivec3 worldPos, glm::ivec3 chunkCoord, glm::ivec3 localPos);
 
     LookedAtResult FindLookedAt(const glm::vec3& rayOrigin, const glm::vec3& rayDirection,

@@ -119,16 +119,6 @@ bool Chunk::RemoveBlock(int lx, int ly, int lz) {
     return true;
 }
 
-void Chunk::ForEachBlock(const std::function<void(int, int, int, uint32_t)>& callback) const {
-    for (int lx = 0; lx < kSize; ++lx)
-    for (int ly = 0; ly < kSize; ++ly)
-    for (int lz = 0; lz < kSize; ++lz) {
-        if (blocks_[lx][ly][lz].exists) {
-            callback(lx, ly, lz, blocks_[lx][ly][lz].blockID);
-        }
-    }
-}
-
 bool Chunk::RebuildMesh(glm::ivec3 chunkOrigin, const AtlasTexture& atlas, const BlockRegistry& registry,
                          const std::function<bool(glm::ivec3)>& hasBlockAtWorld) {
     std::vector<float>    vertices;
@@ -282,11 +272,9 @@ bool Chunk::RebuildMesh(glm::ivec3 chunkOrigin, const AtlasTexture& atlas, const
 void Chunk::Draw() const {
     if (vao_ == 0 || indexCount_ == 0) return;
     cglBindVertexArray(vao_);
-    glDrawElements(GL_TRIANGLES, indexCount_, GL_UNSIGNED_INT, nullptr);
+    glDrawElements(GL_TRIANGLES, indexCount_, GL_UNSIGNED_INT, reinterpret_cast<void*>(0));
 }
 
 void Chunk::DrawWireframe() const {
-    if (vao_ == 0 || indexCount_ == 0) return;
-    cglBindVertexArray(vao_);
-    glDrawElements(GL_TRIANGLES, indexCount_, GL_UNSIGNED_INT, nullptr);
+    Draw();
 }
