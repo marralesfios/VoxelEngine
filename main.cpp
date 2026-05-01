@@ -284,11 +284,9 @@ int main() {
 	// cull faces that are hidden between adjacent solid blocks.
 	grid.RebuildVisibility();
 
-	// various face culling optimizations
 	glEnable(GL_DEPTH_TEST);
+	// various face culling optimizations
 	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
-	glFrontFace(GL_CCW);
 
 	// initialize player (dimensions from physics constants)
 	Physics::Entity player;
