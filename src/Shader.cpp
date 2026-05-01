@@ -33,9 +33,8 @@ namespace {
 }
 
 Shader::~Shader() {
-    if (program_ != 0 && pglDeleteProgram) {
-        pglDeleteProgram(program_);
-    }
+    assert (pglDeleteProgram);
+    pglDeleteProgram(program_);
 }
 
 bool Shader::LoadOpenGLFunctions() {
