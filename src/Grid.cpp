@@ -235,15 +235,6 @@ glm::ivec3 Grid::LocalPos(glm::ivec3 worldPos, glm::ivec3 chunkCoord) {
     return worldPos - chunkCoord * Chunk::kSize;
 }
 
-void Grid::ForEachBlock(const std::function<void(const glm::ivec3&, uint32_t)>& callback) const {
-    for (const auto& [coord, chunk] : chunks_) {
-        const glm::ivec3 origin = coord * Chunk::kSize;
-        chunk->ForEachBlock([&](int lx, int ly, int lz, uint32_t blockID) {
-            callback(origin + glm::ivec3(lx, ly, lz), blockID);
-        });
-    }
-}
-
 void Grid::MarkNeighborChunksDirty(glm::ivec3 /*worldPos*/, glm::ivec3 chunkCoord, glm::ivec3 localPos) {
     const int dirs[3][2] = {{-1, 0}, {-1, 1}, {-1, 2}};
 
@@ -579,7 +570,7 @@ void Grid::DrawFloatBlocks(const std::vector<FloatBlock>& blocks,
         const glm::mat4 mvp   = projection * view * model;
         shader.SetMat4("uMVP", glm::value_ptr(mvp));
 
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, reinterpret_cast<void*>(0));
     }
 
     pglBindVertexArray(0);

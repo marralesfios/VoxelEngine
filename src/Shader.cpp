@@ -3,6 +3,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <cassert>
 
 namespace {
     PFNGLCREATESHADERPROC pglCreateShader = nullptr;
@@ -26,15 +27,15 @@ namespace {
 
     bool gLoaded = false;
 
-    SDL_FunctionPointer GLProc(const char* name) {
-        return SDL_GL_GetProcAddress(name);
+    template<typename Ft>
+    Ft GLProc(const char* name) {
+        return reinterpret_cast<Ft>(SDL_GL_GetProcAddress(name));
     }
 }
 
 Shader::~Shader() {
-    if (program_ != 0 && pglDeleteProgram) {
-        pglDeleteProgram(program_);
-    }
+    assert (pglDeleteProgram);
+    pglDeleteProgram(program_);
 }
 
 bool Shader::LoadOpenGLFunctions() {
@@ -42,30 +43,26 @@ bool Shader::LoadOpenGLFunctions() {
         return true;
     }
 
-    pglCreateShader = reinterpret_cast<PFNGLCREATESHADERPROC>(GLProc("glCreateShader"));
-    pglShaderSource = reinterpret_cast<PFNGLSHADERSOURCEPROC>(GLProc("glShaderSource"));
-    pglCompileShader = reinterpret_cast<PFNGLCOMPILESHADERPROC>(GLProc("glCompileShader"));
-    pglGetShaderiv = reinterpret_cast<PFNGLGETSHADERIVPROC>(GLProc("glGetShaderiv"));
-    pglGetShaderInfoLog = reinterpret_cast<PFNGLGETSHADERINFOLOGPROC>(GLProc("glGetShaderInfoLog"));
-    pglCreateProgram = reinterpret_cast<PFNGLCREATEPROGRAMPROC>(GLProc("glCreateProgram"));
-    pglAttachShader = reinterpret_cast<PFNGLATTACHSHADERPROC>(GLProc("glAttachShader"));
-    pglLinkProgram = reinterpret_cast<PFNGLLINKPROGRAMPROC>(GLProc("glLinkProgram"));
-    pglGetProgramiv = reinterpret_cast<PFNGLGETPROGRAMIVPROC>(GLProc("glGetProgramiv"));
-    pglGetProgramInfoLog = reinterpret_cast<PFNGLGETPROGRAMINFOLOGPROC>(GLProc("glGetProgramInfoLog"));
-    pglUseProgram = reinterpret_cast<PFNGLUSEPROGRAMPROC>(GLProc("glUseProgram"));
-    pglDeleteShader = reinterpret_cast<PFNGLDELETESHADERPROC>(GLProc("glDeleteShader"));
-    pglDeleteProgram = reinterpret_cast<PFNGLDELETEPROGRAMPROC>(GLProc("glDeleteProgram"));
-    pglGetUniformLocation = reinterpret_cast<PFNGLGETUNIFORMLOCATIONPROC>(GLProc("glGetUniformLocation"));
-    pglUniformMatrix4fv = reinterpret_cast<PFNGLUNIFORMMATRIX4FVPROC>(GLProc("glUniformMatrix4fv"));
-    pglUniform1i = reinterpret_cast<PFNGLUNIFORM1IPROC>(GLProc("glUniform1i"));
-    pglUniform4f = reinterpret_cast<PFNGLUNIFORM4FPROC>(GLProc("glUniform4f"));
-    pglUniform2f = reinterpret_cast<PFNGLUNIFORM2FPROC>(GLProc("glUniform2f"));
-
-    gLoaded = pglCreateShader && pglShaderSource && pglCompileShader && pglGetShaderiv &&
-              pglGetShaderInfoLog && pglCreateProgram && pglAttachShader && pglLinkProgram &&
-              pglGetProgramiv && pglGetProgramInfoLog && pglUseProgram && pglDeleteShader &&
-              pglDeleteProgram && pglGetUniformLocation && pglUniformMatrix4fv && pglUniform1i &&
-              pglUniform4f && pglUniform2f;
+    gLoaded = (
+       (pglCreateShader = GLProc<PFNGLCREATESHADERPROC>("glCreateShader"))
+    && (pglShaderSource = GLProc<PFNGLSHADERSOURCEPROC>("glShaderSource"))
+    && (pglCompileShader = GLProc<PFNGLCOMPILESHADERPROC>("glCompileShader"))
+    && (pglGetShaderiv = GLProc<PFNGLGETSHADERIVPROC>("glGetShaderiv"))
+    && (pglGetShaderInfoLog = GLProc<PFNGLGETSHADERINFOLOGPROC>("glGetShaderInfoLog"))
+    && (pglCreateProgram = GLProc<PFNGLCREATEPROGRAMPROC>("glCreateProgram"))
+    && (pglAttachShader = GLProc<PFNGLATTACHSHADERPROC>("glAttachShader"))
+    && (pglLinkProgram = GLProc<PFNGLLINKPROGRAMPROC>("glLinkProgram"))
+    && (pglGetProgramiv = GLProc<PFNGLGETPROGRAMIVPROC>("glGetProgramiv"))
+    && (pglGetProgramInfoLog = GLProc<PFNGLGETPROGRAMINFOLOGPROC>("glGetProgramInfoLog"))
+    && (pglUseProgram = GLProc<PFNGLUSEPROGRAMPROC>("glUseProgram"))
+    && (pglDeleteShader = GLProc<PFNGLDELETESHADERPROC>("glDeleteShader"))
+    && (pglDeleteProgram = GLProc<PFNGLDELETEPROGRAMPROC>("glDeleteProgram"))
+    && (pglGetUniformLocation = GLProc<PFNGLGETUNIFORMLOCATIONPROC>("glGetUniformLocation"))
+    && (pglUniformMatrix4fv = GLProc<PFNGLUNIFORMMATRIX4FVPROC>("glUniformMatrix4fv"))
+    && (pglUniform1i = GLProc<PFNGLUNIFORM1IPROC>("glUniform1i"))
+    && (pglUniform4f = GLProc<PFNGLUNIFORM4FPROC>("glUniform4f"))
+    && (pglUniform2f = GLProc<PFNGLUNIFORM2FPROC>("glUniform2f"))
+    );
 
     return gLoaded;
 }
@@ -170,40 +167,31 @@ void Shader::Use() const {
 }
 
 void Shader::SetMat4(const char* name, const float* matrix) const {
-    if (program_ == 0) {
-        return;
-    }
+    assert(pglGetUniformLocation && pglUniformMatrix4fv && program_ != 0);
 
     const GLint loc = pglGetUniformLocation(program_, name);
-    if (loc >= 0) {
-        pglUniformMatrix4fv(loc, 1, GL_FALSE, matrix);
-    }
+    pglUniformMatrix4fv(loc, 1, GL_FALSE, matrix);
 }
 
 void Shader::SetInt(const char* name, int value) const {
-    if (program_ == 0) {
-        return;
-    }
+    assert(pglGetUniformLocation && pglUniform1i && program_ != 0);
 
     const GLint loc = pglGetUniformLocation(program_, name);
-    if (loc >= 0) {
-        pglUniform1i(loc, value);
-    }
+    pglUniform1i(loc, value);
 }
 
 void Shader::SetVec4(const char* name, float x, float y, float z, float w) const {
-    if (program_ == 0) {
+    assert(pglGetUniformLocation && pglUniform4f && program_ != 0);
         return;
     }
 
     const GLint loc = pglGetUniformLocation(program_, name);
-    if (loc >= 0) {
-        pglUniform4f(loc, x, y, z, w);
-    }
+    pglUniform4f(loc, x, y, z, w);
 }
 
 void Shader::SetVec2(const char* name, float x, float y) const {
-    if (!pglGetUniformLocation || !pglUniform2f || program_ == 0) return;
+    assert(pglGetUniformLocation && pglUniform2f && program_ != 0);
+
     const GLint loc = pglGetUniformLocation(program_, name);
-    if (loc >= 0) pglUniform2f(loc, x, y);
+    pglUniform2f(loc, x, y);
 }

@@ -26,8 +26,7 @@ AtlasTexture::~AtlasTexture() {
 }
 
 bool AtlasTexture::LoadFromFile(const std::string& atlasPath) {
-    int channels = 0;
-    unsigned char* pixels = stbi_load(atlasPath.c_str(), &width_, &height_, &channels, STBI_rgb_alpha);
+    unsigned char* pixels = stbi_load(atlasPath.c_str(), &width_, &height_, nullptr, STBI_rgb_alpha);
     if (!pixels) {
         SDL_Log("Could not load atlas '%s': %s", atlasPath.c_str(), stbi_failure_reason());
         return false;
