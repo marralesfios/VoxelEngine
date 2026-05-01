@@ -314,7 +314,6 @@ int main() {
 	int displayedFps = 0;
 	
 	// place player
-	player.position = camera.position;
 	physics.teleportTo(player, {0.5f, 3.0f, 0.5f}, &camera);
 
 	int winWidth = 0;
