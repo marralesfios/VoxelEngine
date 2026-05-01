@@ -336,7 +336,7 @@ int main() {
 		++fpsFrameCount;
 		if(fpsAccumulatedSeconds >= 0.25) {
 			displayedFps = static_cast<int>(static_cast<double>(fpsFrameCount) / fpsAccumulatedSeconds + 0.5);
-			fpsAccumulatedSeconds = 0.0;
+			fpsAccumulatedSeconds -= 0.25;
 			fpsFrameCount = 0;
 		}
 
@@ -431,22 +431,15 @@ int main() {
 
 		camera.UpdateFromMouseDelta(mouseDeltaX, mouseDeltaY);
 
-		const bool* keys = SDL_GetKeyboardState(nullptr);
+		const bool* const keys = SDL_GetKeyboardState(nullptr);
 		const bool ctrlDown = keys[SDL_SCANCODE_LCTRL] || keys[SDL_SCANCODE_RCTRL];
 		const bool shiftDown = keys[SDL_SCANCODE_LSHIFT] || keys[SDL_SCANCODE_RSHIFT];
 		const bool crawlComboDown = ctrlDown && shiftDown;
 		crawlToggleThisFrame = crawlComboDown && !prevCrawlComboDown;
 		prevCrawlComboDown = crawlComboDown;
 
-		glm::vec3 forward = camera.Forward();
-		forward.y = 0.0f;
-		if(glm::length(forward) > 0.0001f) {
-			forward = glm::normalize(forward);
-		}
+		glm::vec3 forward = camera.HorizontalForward();
 		glm::vec3 right = glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f));
-		if(glm::length(right) > 0.0001f) {
-			right = glm::normalize(right);
-		}
 
 		glm::vec3 moveDir(0.0f);
 		if(keys[SDL_SCANCODE_W]) moveDir += forward;

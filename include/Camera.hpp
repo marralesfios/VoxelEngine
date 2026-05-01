@@ -11,6 +11,7 @@ public:
     float pitchRadians = -0.3f;
 
     glm::vec3 Forward() const;
+    glm::vec3 HorizontalForward() const;
     glm::mat4 View() const;
 
     void UpdateFromKeyboard(const bool* keys, float deltaSeconds);

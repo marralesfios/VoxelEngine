@@ -170,40 +170,31 @@ void Shader::Use() const {
 }
 
 void Shader::SetMat4(const char* name, const float* matrix) const {
-    if (program_ == 0) {
-        return;
-    }
+    if (!pglGetUniformLocation || !pglUniformMatrix4fv || program_ == 0) return;
 
     const GLint loc = pglGetUniformLocation(program_, name);
-    if (loc >= 0) {
-        pglUniformMatrix4fv(loc, 1, GL_FALSE, matrix);
-    }
+    pglUniformMatrix4fv(loc, 1, GL_FALSE, matrix);
 }
 
 void Shader::SetInt(const char* name, int value) const {
-    if (program_ == 0) {
-        return;
-    }
+    if (!pglGetUniformLocation || !pglUniform1i || program_ == 0) return;
 
     const GLint loc = pglGetUniformLocation(program_, name);
-    if (loc >= 0) {
-        pglUniform1i(loc, value);
-    }
+    pglUniform1i(loc, value);
 }
 
 void Shader::SetVec4(const char* name, float x, float y, float z, float w) const {
-    if (program_ == 0) {
+    if (!pglGetUniformLocation || !pglUniform4f || program_ == 0) return;
         return;
     }
 
     const GLint loc = pglGetUniformLocation(program_, name);
-    if (loc >= 0) {
-        pglUniform4f(loc, x, y, z, w);
-    }
+    pglUniform4f(loc, x, y, z, w);
 }
 
 void Shader::SetVec2(const char* name, float x, float y) const {
     if (!pglGetUniformLocation || !pglUniform2f || program_ == 0) return;
+
     const GLint loc = pglGetUniformLocation(program_, name);
-    if (loc >= 0) pglUniform2f(loc, x, y);
+    pglUniform2f(loc, x, y);
 }
