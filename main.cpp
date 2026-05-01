@@ -4,7 +4,10 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <memory>
 #include <iostream>
+#include <filesystem>
+#include <type_traits>
 
 // sdl
 #include <SDL3/SDL.h>
@@ -37,36 +40,32 @@ TODO:
 	- [BUG] Greedy meshing doesn't run every frame/tick
 */
 
+using namespace std::literals::string_view_literals;
 namespace {
-	bool FileExists(const std::string& path) {
-		std::ifstream file(path);
-		return file.good();
-	}
 
-	std::string ResolveAssetPath(const std::string& relativePath) {
-		if(FileExists(relativePath)) {
-			return relativePath;
+	std::string ResolveAssetPath(std::filesystem::path relativePath) {
+		if(std::filesystem::is_regular_file(relativePath)) {
+			return relativePath.string();
 		}
 
-		const char* basePathRaw = SDL_GetBasePath();
-		if(basePathRaw) {
-			const std::string basePath(basePathRaw);
-
-			const std::array<std::string, 3> prefixes = {
-				"",
-				"assets/",
-				"../assets/",
+		if(const char* const basePathRaw = SDL_GetBasePath()) {
+			const std::filesystem::path basePath(basePathRaw);
+			
+			const std::array<std::filesystem::path, 3> prefixes = {
+				""sv,
+				"assets"sv,
+				"../assets"sv,
 			};
 
-			for(const std::string& prefix : prefixes) {
-				const std::string candidate = basePath + prefix + relativePath;
-				if(FileExists(candidate)) {
-					return candidate;
+			for(const std::filesystem::path& prefix : prefixes) {
+				const std::filesystem::path candidate = basePath / prefix / relativePath;
+				if(std::filesystem::is_regular_file(candidate)) {
+					return candidate.string();
 				}
 			}
 		}
 
-		return relativePath;
+		return relativePath.string();
 	}
 
 	// Parses blocks.data and registers each block into registry.
@@ -107,6 +106,14 @@ namespace {
 		}
 		return true;
 	}
+	
+	template<typename T,auto delfn> requires(std::is_pointer_v<T>)
+	using managed_ptr = std::unique_ptr<std::remove_pointer_t<T>, [](T handle){ if(handle) delfn(handle); }>;
+
+	[[noreturn]] void quit(int code){
+		SDL_Quit();
+		std::exit(code);
+	}
 }
 
 int main() {
@@ -131,48 +138,45 @@ int main() {
 		!SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1) ||
 		!SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24)) {
 		std::fprintf(stderr, "SDL_GL_SetAttribute failed: %s\n", SDL_GetError());
-		SDL_Quit();
-		return 1;
+		quit(1);
 	}
 
-	SDL_Window* window = SDL_CreateWindow("Voxel Engine", 1280, 720, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+	managed_ptr<SDL_Window*, SDL_DestroyWindow> window{SDL_CreateWindow("Voxel Engine", 1280, 720, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE)};
 	if(!window) {
 		std::fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
-		SDL_Quit();
-		return 1;
+		quit(1);
 	}
 
-	SDL_GLContext glContext = SDL_GL_CreateContext(window);
+	managed_ptr<SDL_GLContext, SDL_GL_DestroyContext> glContext{SDL_GL_CreateContext(window)};
 	if(!glContext) {
 		std::fprintf(stderr, "SDL_GL_CreateContext failed: %s\n", SDL_GetError());
-		SDL_DestroyWindow(window);
-		SDL_Quit();
-		return 1;
+		quit(1);
 	}
 
 	if(!SDL_GL_SetSwapInterval(1)) {
 		std::fprintf(stderr, "Warning: could not enable VSync: %s\n", SDL_GetError());
 	}
 
-	if(!SDL_SetWindowRelativeMouseMode(window, true)) {
+	if(!SDL_SetWindowRelativeMouseMode(window.get(), true)) {
 		std::fprintf(stderr, "Warning: could not enable relative mouse mode: %s\n", SDL_GetError());
 	}
 
 	{
 
 	// grab all the assets
-	const std::string vertShaderPath = ResolveAssetPath("assets/shaders/voxel.vert");
-	const std::string fragShaderPath = ResolveAssetPath("assets/shaders/voxel.frag");
-	const std::string uiVertShaderPath = ResolveAssetPath("assets/shaders/ui.vert");
-	const std::string uiFragShaderPath = ResolveAssetPath("assets/shaders/ui.frag");
-	const std::string wireframeVertShaderPath = ResolveAssetPath("assets/shaders/wireframe.vert");
-	const std::string wireframeFragShaderPath = ResolveAssetPath("assets/shaders/wireframe.frag");
-	const std::string hotbarVertShaderPath = ResolveAssetPath("assets/shaders/hotbar.vert");
-	const std::string hotbarFragShaderPath = ResolveAssetPath("assets/shaders/hotbar.frag");
-	const std::string atlasPngPath = ResolveAssetPath("assets/atlas.png");
-	const std::string atlasBmpPath = ResolveAssetPath("assets/atlas.bmp"); // NOT CURRENTLY USED
-	const std::string physicsConstantsPath = ResolveAssetPath("assets/data/physics_constants.data");
-	const std::string blocksDataPath = ResolveAssetPath("assets/data/blocks.data");
+	// TODO: use std::filesystem::path
+	const std::string vertShaderPath = ResolveAssetPath("assets/shaders/voxel.vert"sv);
+	const std::string fragShaderPath = ResolveAssetPath("assets/shaders/voxel.frag"sv);
+	const std::string uiVertShaderPath = ResolveAssetPath("assets/shaders/ui.vert"sv);
+	const std::string uiFragShaderPath = ResolveAssetPath("assets/shaders/ui.frag"sv);
+	const std::string wireframeVertShaderPath = ResolveAssetPath("assets/shaders/wireframe.vert"sv);
+	const std::string wireframeFragShaderPath = ResolveAssetPath("assets/shaders/wireframe.frag"sv);
+	const std::string hotbarVertShaderPath = ResolveAssetPath("assets/shaders/hotbar.vert"sv);
+	const std::string hotbarFragShaderPath = ResolveAssetPath("assets/shaders/hotbar.frag"sv);
+	const std::string atlasPngPath = ResolveAssetPath("assets/atlas.png"sv);
+	const std::string atlasBmpPath = ResolveAssetPath("assets/atlas.bmp"sv); // NOT CURRENTLY USED
+	const std::string physicsConstantsPath = ResolveAssetPath("assets/data/physics_constants.data"sv);
+	const std::string blocksDataPath = ResolveAssetPath("assets/data/blocks.data"sv);
 
 	// init default shader
 	Shader defaultShader;
@@ -180,10 +184,7 @@ int main() {
 		std::fprintf(stderr, "Tried vertex shader at: %s\n", vertShaderPath.c_str());
 		std::fprintf(stderr, "Tried fragment shader at: %s\n", fragShaderPath.c_str());
 		std::fprintf(stderr, "Shader load failed.\n");
-		SDL_GL_DestroyContext(glContext);
-		SDL_DestroyWindow(window);
-		SDL_Quit();
-		return 1;
+		quit(1);
 	}
 
 	// init wireframe shader
@@ -192,10 +193,7 @@ int main() {
 		std::fprintf(stderr, "Tried wireframe vertex shader at: %s\n", wireframeVertShaderPath.c_str());
 		std::fprintf(stderr, "Tried wireframe fragment shader at: %s\n", wireframeFragShaderPath.c_str());
 		std::fprintf(stderr, "Wireframe shader load failed.\n");
-		SDL_GL_DestroyContext(glContext);
-		SDL_DestroyWindow(window);
-		SDL_Quit();
-		return 1;
+		quit(1);
 	}
 
 	// init atlas
@@ -204,10 +202,7 @@ int main() {
 		std::fprintf(stderr, "Tried atlas PNG at: %s\n", atlasPngPath.c_str());
 		std::fprintf(stderr, "Tried atlas BMP at: %s\n", atlasBmpPath.c_str());
 		std::fprintf(stderr, "Atlas load failed. Add assets/atlas.png or assets/atlas.bmp.\n");
-		SDL_GL_DestroyContext(glContext);
-		SDL_DestroyWindow(window);
-		SDL_Quit();
-		return 1;
+		quit(1);
 	}
 
 	// init debug UI
@@ -216,10 +211,7 @@ int main() {
 		std::fprintf(stderr, "Tried UI vertex shader at: %s\n", uiVertShaderPath.c_str());
 		std::fprintf(stderr, "Tried UI fragment shader at: %s\n", uiFragShaderPath.c_str());
 		std::fprintf(stderr, "DebugOverlay initialization failed.\n");
-		SDL_GL_DestroyContext(glContext);
-		SDL_DestroyWindow(window);
-		SDL_Quit();
-		return 1;
+		quit(1);
 	}
 
 	// init hotbar
@@ -228,10 +220,7 @@ int main() {
 		std::fprintf(stderr, "Tried hotbar vertex shader at: %s\n", hotbarVertShaderPath.c_str());
 		std::fprintf(stderr, "Tried hotbar fragment shader at: %s\n", hotbarFragShaderPath.c_str());
 		std::fprintf(stderr, "Hotbar initialization failed.\n");
-		SDL_GL_DestroyContext(glContext);
-		SDL_DestroyWindow(window);
-		SDL_Quit();
-		return 1;
+		quit(1);
 	}
 
 	// load physics constants (use defaults if file not present)
@@ -248,10 +237,7 @@ int main() {
 	if(!LoadBlocks(blocksDataPath, &atlas, blockRegistry)) {
 		std::fprintf(stderr, "Tried blocks.data at: %s\n", blocksDataPath.c_str());
 		std::fprintf(stderr, "Block data load failed.\n");
-		SDL_GL_DestroyContext(glContext);
-		SDL_DestroyWindow(window);
-		SDL_Quit();
-		return 1;
+		quit(1);
 	}
 
 	// 5x5x2 flat platform at y = -1
@@ -262,10 +248,7 @@ int main() {
 		for(int x = 0; x < 5; ++x) {
 			if(!grid.AddBlock(x, 0, z, GRASS)) {
 				std::fprintf(stderr, "Grid::AddBlock<Grass> failed at (%d, 0, %d).\n", x, z);
-				SDL_GL_DestroyContext(glContext);
-				SDL_DestroyWindow(window);
-				SDL_Quit();
-				return 1;
+				quit(1);
 			}
 		}
 	}
@@ -275,10 +258,7 @@ int main() {
 		for(int x = 0; x < 5; ++x) {
 			if(!grid.AddBlock(x, -1, z, DIRT)) {
 				std::fprintf(stderr, "Grid::AddBlock<Dirt> failed at (%d, 1, %d).\n", x, z);
-				SDL_GL_DestroyContext(glContext);
-				SDL_DestroyWindow(window);
-				SDL_Quit();
-				return 1;
+				quit(1);
 			}
 		}
 	}
@@ -288,10 +268,7 @@ int main() {
 		for(int x = 0; x < 5; ++x) {
 			if(!grid.AddBlock(x, -2, z, STONE)) {
 				std::fprintf(stderr, "Grid::AddBlock<Stone> failed at (%d, 1, %d).\n", x, z);
-				SDL_GL_DestroyContext(glContext);
-				SDL_DestroyWindow(window);
-				SDL_Quit();
-				return 1;
+				quit(1);
 			}
 		}
 	}
@@ -408,7 +385,7 @@ int main() {
 				debug_view = !debug_view;
 			}
 			if(event.type == SDL_EVENT_KEY_DOWN) {
-				const bool* kbState = SDL_GetKeyboardState(nullptr);
+				const bool* const kbState = SDL_GetKeyboardState(nullptr);
 				if(kbState[SDL_SCANCODE_F3]) {
 					if(event.key.key == SDLK_W) { debug_wireframe = !debug_wireframe; }
 					if(event.key.key == SDLK_B) { debug_looked_at_block = !debug_looked_at_block; }
@@ -502,7 +479,7 @@ int main() {
 		// window resizing
 		int width = 0;
 		int height = 0;
-		SDL_GetWindowSize(window, &width, &height);
+		SDL_GetWindowSize(window.get(), &width, &height);
 		glViewport(0, 0, width, height);
 
 		// bg color
@@ -539,7 +516,7 @@ int main() {
 				const Grid::LookedAtResult hit = grid.QueryLookedAt(camera);
 				std::ostringstream oss;
 				if(hit.hit) {
-					const char* blockName = (hit.blockData != nullptr) ? hit.blockData->name.c_str() : "UNKNOWN";
+					const char* const blockName = (hit.blockData != nullptr) ? hit.blockData->name.c_str() : "UNKNOWN";
 
 					oss << "CURRENT BLOCK POS: [" << hit.blockPos.x
 						<< " " << hit.blockPos.y
@@ -572,16 +549,13 @@ int main() {
 		hotbar.Draw(blockRegistry, width, height);
 
 		// swap
-		SDL_GL_SwapWindow(window);
+		SDL_GL_SwapWindow(window.get());
 	}
 
 	// cleanup shared debug meshes created inside Grid.cpp while context is still alive.
 	Grid::ReleaseSharedGLResources();
 	}
 
-	SDL_GL_DestroyContext(glContext);
-	SDL_DestroyWindow(window);
-	SDL_Quit();
 	return 0;
 }
 
