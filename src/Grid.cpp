@@ -579,7 +579,7 @@ void Grid::DrawFloatBlocks(const std::vector<FloatBlock>& blocks,
         const glm::mat4 mvp   = projection * view * model;
         shader.SetMat4("uMVP", glm::value_ptr(mvp));
 
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, reinterpret_cast<void*>(0));
     }
 
     pglBindVertexArray(0);
