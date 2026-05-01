@@ -286,7 +286,5 @@ void Chunk::Draw() const {
 }
 
 void Chunk::DrawWireframe() const {
-    if (vao_ == 0 || indexCount_ == 0) return;
-    cglBindVertexArray(vao_);
-    glDrawElements(GL_TRIANGLES, indexCount_, GL_UNSIGNED_INT, nullptr);
+    Draw();
 }
