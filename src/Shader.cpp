@@ -43,30 +43,26 @@ bool Shader::LoadOpenGLFunctions() {
         return true;
     }
 
-    pglCreateShader = reinterpret_cast<PFNGLCREATESHADERPROC>(GLProc("glCreateShader"));
-    pglShaderSource = reinterpret_cast<PFNGLSHADERSOURCEPROC>(GLProc("glShaderSource"));
-    pglCompileShader = reinterpret_cast<PFNGLCOMPILESHADERPROC>(GLProc("glCompileShader"));
-    pglGetShaderiv = reinterpret_cast<PFNGLGETSHADERIVPROC>(GLProc("glGetShaderiv"));
-    pglGetShaderInfoLog = reinterpret_cast<PFNGLGETSHADERINFOLOGPROC>(GLProc("glGetShaderInfoLog"));
-    pglCreateProgram = reinterpret_cast<PFNGLCREATEPROGRAMPROC>(GLProc("glCreateProgram"));
-    pglAttachShader = reinterpret_cast<PFNGLATTACHSHADERPROC>(GLProc("glAttachShader"));
-    pglLinkProgram = reinterpret_cast<PFNGLLINKPROGRAMPROC>(GLProc("glLinkProgram"));
-    pglGetProgramiv = reinterpret_cast<PFNGLGETPROGRAMIVPROC>(GLProc("glGetProgramiv"));
-    pglGetProgramInfoLog = reinterpret_cast<PFNGLGETPROGRAMINFOLOGPROC>(GLProc("glGetProgramInfoLog"));
-    pglUseProgram = reinterpret_cast<PFNGLUSEPROGRAMPROC>(GLProc("glUseProgram"));
-    pglDeleteShader = reinterpret_cast<PFNGLDELETESHADERPROC>(GLProc("glDeleteShader"));
-    pglDeleteProgram = reinterpret_cast<PFNGLDELETEPROGRAMPROC>(GLProc("glDeleteProgram"));
-    pglGetUniformLocation = reinterpret_cast<PFNGLGETUNIFORMLOCATIONPROC>(GLProc("glGetUniformLocation"));
-    pglUniformMatrix4fv = reinterpret_cast<PFNGLUNIFORMMATRIX4FVPROC>(GLProc("glUniformMatrix4fv"));
-    pglUniform1i = reinterpret_cast<PFNGLUNIFORM1IPROC>(GLProc("glUniform1i"));
-    pglUniform4f = reinterpret_cast<PFNGLUNIFORM4FPROC>(GLProc("glUniform4f"));
-    pglUniform2f = reinterpret_cast<PFNGLUNIFORM2FPROC>(GLProc("glUniform2f"));
-
-    gLoaded = pglCreateShader && pglShaderSource && pglCompileShader && pglGetShaderiv &&
-              pglGetShaderInfoLog && pglCreateProgram && pglAttachShader && pglLinkProgram &&
-              pglGetProgramiv && pglGetProgramInfoLog && pglUseProgram && pglDeleteShader &&
-              pglDeleteProgram && pglGetUniformLocation && pglUniformMatrix4fv && pglUniform1i &&
-              pglUniform4f && pglUniform2f;
+    gLoaded = (
+       (pglCreateShader = reinterpret_cast<PFNGLCREATESHADERPROC>(GLProc("glCreateShader")))
+    && (pglShaderSource = reinterpret_cast<PFNGLSHADERSOURCEPROC>(GLProc("glShaderSource")))
+    && (pglCompileShader = reinterpret_cast<PFNGLCOMPILESHADERPROC>(GLProc("glCompileShader")))
+    && (pglGetShaderiv = reinterpret_cast<PFNGLGETSHADERIVPROC>(GLProc("glGetShaderiv")))
+    && (pglGetShaderInfoLog = reinterpret_cast<PFNGLGETSHADERINFOLOGPROC>(GLProc("glGetShaderInfoLog")))
+    && (pglCreateProgram = reinterpret_cast<PFNGLCREATEPROGRAMPROC>(GLProc("glCreateProgram")))
+    && (pglAttachShader = reinterpret_cast<PFNGLATTACHSHADERPROC>(GLProc("glAttachShader")))
+    && (pglLinkProgram = reinterpret_cast<PFNGLLINKPROGRAMPROC>(GLProc("glLinkProgram")))
+    && (pglGetProgramiv = reinterpret_cast<PFNGLGETPROGRAMIVPROC>(GLProc("glGetProgramiv")))
+    && (pglGetProgramInfoLog = reinterpret_cast<PFNGLGETPROGRAMINFOLOGPROC>(GLProc("glGetProgramInfoLog")))
+    && (pglUseProgram = reinterpret_cast<PFNGLUSEPROGRAMPROC>(GLProc("glUseProgram")))
+    && (pglDeleteShader = reinterpret_cast<PFNGLDELETESHADERPROC>(GLProc("glDeleteShader")))
+    && (pglDeleteProgram = reinterpret_cast<PFNGLDELETEPROGRAMPROC>(GLProc("glDeleteProgram")))
+    && (pglGetUniformLocation = reinterpret_cast<PFNGLGETUNIFORMLOCATIONPROC>(GLProc("glGetUniformLocation")))
+    && (pglUniformMatrix4fv = reinterpret_cast<PFNGLUNIFORMMATRIX4FVPROC>(GLProc("glUniformMatrix4fv")))
+    && (pglUniform1i = reinterpret_cast<PFNGLUNIFORM1IPROC>(GLProc("glUniform1i")))
+    && (pglUniform4f = reinterpret_cast<PFNGLUNIFORM4FPROC>(GLProc("glUniform4f")))
+    && (pglUniform2f = reinterpret_cast<PFNGLUNIFORM2FPROC>(GLProc("glUniform2f")))
+    );
 
     return gLoaded;
 }
