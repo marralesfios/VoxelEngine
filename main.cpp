@@ -300,7 +300,6 @@ int main() {
 	Camera camera;
 	Physics physics(grid, blockRegistry);
 	physics.SetConstants(physicsConstants);
-	bool running = true;
 	bool debug_view = true;
 	bool debug_wireframe = false;
 	bool debug_looked_at_block = false;
@@ -323,7 +322,7 @@ int main() {
 	int winWidth = 0;
 	int winHeight = 0;
 	// main loop
-	while(running) {
+	while(true) {
 		float mouseDeltaX = 0.0f;
 		float mouseDeltaY = 0.0f;
 		crawlToggleThisFrame = false;
@@ -344,10 +343,10 @@ int main() {
 		SDL_Event event;
 		while(SDL_PollEvent(&event)) {
 			if(event.type == SDL_EVENT_QUIT) {
-				running = false;
+				goto stop_mainloop;
 			}
 			if(event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE) {
-				running = false;
+				goto stop_mainloop;
 			}
 
 			if(event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
@@ -542,6 +541,7 @@ int main() {
 		// swap
 		SDL_GL_SwapWindow(window.get());
 	}
+	stop_mainloop:
 
 	// cleanup shared debug meshes created inside Grid.cpp while context is still alive.
 	Grid::ReleaseSharedGLResources();
