@@ -161,8 +161,6 @@ int main() {
 		std::fprintf(stderr, "Warning: could not enable relative mouse mode: %s\n", SDL_GetError());
 	}
 
-	{
-
 	// grab all the assets
 	// TODO: use std::filesystem::path
 	const std::string vertShaderPath = ResolveAssetPath("assets/shaders/voxel.vert"sv);
@@ -547,7 +545,6 @@ int main() {
 
 	// cleanup shared debug meshes created inside Grid.cpp while context is still alive.
 	Grid::ReleaseSharedGLResources();
-	}
 
 	return 0;
 }
